@@ -1,0 +1,14 @@
+{
+  "name": "todohub",
+  "author": "Varun Ramesh <varunramesh@live.com>",
+  "license": "MIT",
+  "main": "app.js",
+  "dependencies": {
+    "express": "^4.12.3",
+    "memcached": "^2.1.0",
+    "nunjucks": "^1.3.3"
+  },
+  "scripts" : {
+  	"start" : "node app.js"
+  }
+}
