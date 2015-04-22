@@ -14,12 +14,6 @@ var github = new githubapi({
 var app = express();
 var server = require('http').Server(app);
 
-var memjs = require('memjs');
-var client = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
-    username: process.env.MEMCACHEDCLOUD_USERNAME,
-    password: process.env.MEMCACHEDCLOUD_PASSWORD
-});
-
 app.use(express.static('public'));
 
 app.get('/:user/:repo', function(request, response){
@@ -52,11 +46,21 @@ app.get('/:user/:repo', function(request, response){
                                    repo: request.params.repo,
                                    sha: file.sha
                                }, function (err, result) {
-                                   callback(err, result);
+                                   if(err) callback(err);
+                                   else {
+                                   	  var buffer = new Buffer(result.content, result.encoding);
+                                   	  callback(null, {
+                                   	  	path: file.path,
+                                   	  	content: buffer.toString()
+                                   	  });
+                                   }
                                })
                            }, function(err, results) {
                                 if(err) response.send(err);
-                                else response.send(results);
+                                else {
+                                	// TODO: Actually parse files
+                                	response.send(results);
+                                }
                            });
                        }
                     });
