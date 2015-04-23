@@ -3,12 +3,16 @@ global.PORT = (process.env.PORT || 80);
 var express = require('express');
 var nunjucks = require('nunjucks');
 var async = require('async');
+var todolist = require('todo-list');
+var _ = require('underscore');
+var _request = require('request');
 
+// GitHub API Client
 var githubapi = require("github");
 var github = new githubapi({
-    version: "3.0.0",
-    protocol: "https",
-    host: "api.github.com"
+  version: "3.0.0",
+  protocol: "https",
+  host: "api.github.com"
 });
 
 var app = express();
@@ -16,60 +20,89 @@ var server = require('http').Server(app);
 
 app.use(express.static('public'));
 
-app.get('/:user/:repo', function(request, response){
-	github.repos.get({
+function get_context(code, line) {
+  var lines = code.split(/\r*\n/);
+
+  CONTEXT = 4;
+  var start = _.max([0, line - CONTEXT])
+
+  var end = _.min([lines.length - 1, line + CONTEXT])
+
+  return lines.slice(start, end).join('\n');
+}
+
+function render_list(items, request, response) {
+  response.send(items);
+}
+
+// Route that access the tip of the default branch
+app.get('/:user/:repo', function(request, response) {
+  github.repos.get({
+    user: request.params.user,
+    repo: request.params.repo
+  }, function(err, result) {
+    if (err) {
+      response.send(err);
+    } else {
+      var default_branch = result.default_branch;
+      github.repos.getBranch({
         user: request.params.user,
-        repo: request.params.repo
-    }, function(err, result) {
-        if(err) response.send(err);
-        else {
-            var default_branch = result.default_branch;
-            github.repos.getBranch({
-                user: request.params.user,
-                repo: request.params.repo,
-                branch: default_branch
-            }, function(err, result) {
-                if(err) response.send(err);
-                else {
-                    var sha = result.commit.sha;
-                    github.gitdata.getTree({
-                        user: request.params.user,
-                        repo: request.params.repo,
-                        sha: sha,
-                        recursive: true
-                    }, function(err, result) {
-                       if(err) response.send(err);
-                       else {
-                           async.mapSeries(result.tree, function(file, callback) {
-                               github.gitdata.getBlob({
-                                   user: request.params.user,
-                                   repo: request.params.repo,
-                                   sha: file.sha
-                               }, function (err, result) {
-                                   if(err) callback(err);
-                                   else {
-                                   	  var buffer = new Buffer(result.content, result.encoding);
-                                   	  callback(null, {
-                                   	  	path: file.path,
-                                   	  	content: buffer.toString()
-                                   	  });
-                                   }
-                               })
-                           }, function(err, results) {
-                                if(err) response.send(err);
-                                else {
-                                	// TODO: Actually parse files
-                                	response.send(results);
-                                }
-                           });
-                       }
+        repo: request.params.repo,
+        branch: default_branch
+      }, function(err, result) {
+        if (err) {
+          response.send(err);
+        } else {
+          var sha = result.commit.sha;
+          github.gitdata.getTree({
+            user: request.params.user,
+            repo: request.params.repo,
+            sha: sha,
+            recursive: true
+          }, function(err, result) {
+            if (err) {
+              response.send(err);
+            } else {
+              async.mapSeries(result.tree, function(file, callback) {
+                var url = "https://raw.githubusercontent.com/" +
+                  request.params.user + "/" + request.params.repo +
+                  "/" + sha + "/" + file.path;
+
+                _request(url, function(error, response, body) {
+                  if (error) {
+                    callback(error);
+                  } else {
+                    callback(null, {
+                      content: body,
+                      path: file.path
                     });
+                  }
+                });
+              }, function(err, results) {
+                if (err) {
+                  response.send(err);
+                } else {
+                  var items = [];
+                  _.each(results, function(file) {
+                    var marks = todolist.findMarks(file.content);
+                    _.each(marks, function(mark) {
+                      mark.file = file.path;
+                      mark.context = get_context(file.content, file.line);
+                      items.push(mark);
+                    });
+                  });
+
+                  render_list(items, request, response);
                 }
-            })
+              });
+            }
+          });
         }
-    });
+      })
+    }
+  });
 });
 
 server.listen(global.PORT, 'localhost', function() {
-	console.log("Listening on localhost:" + PORT + "...");
+  console.log("Listening on localhost:" + PORT + "...");
 });
