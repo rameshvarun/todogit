@@ -6,47 +6,7 @@ var async = require('async');
 var todolist = require('todo-list');
 var _ = require('underscore');
 var _request = require('request');
-var levelup = require('level');
-
-// Setup cache
-var db = levelup('./cache');
-
-/**
- * Checks that cache for a given key. If the key has
- * an associated value, it is immediately passed to proceed.
- * If the key is not in the cache, we call generate_data
- * which creates the data, puts it in the cache, and calls proceed.
- * @param {string} key - The key of this data in the cache
- * @param generate_data - A function that should generate the data.
- *     It is passed a callback, of prototype function(err, data)
- * @param proceed - a function(err, data), which proceeds with the data
- */
-function check_cache(key, generate_data, proceed) {
-  // Check for the Key in the database
-  db.get(key, function(err, value) {
-    if (err) { // Key not found
-      // Call the data generation callback
-      generate_data(function(err, data) {
-        if (err) { // Error generating data
-          proceed(err);
-        } else {
-          // Save generated data to DB
-          db.put(key, JSON.stringify(data), function(err) {
-            if (err) {
-              console.error("Could not persist " + key + " to cache.");
-            } else {
-              console.log("Wrote " + key + " to cache.");
-            }
-          });
-          proceed(null, data);
-        }
-      });
-    } else { // Key found, pass on the value
-      console.log("Read " + key + " from cache.");
-      proceed(null, JSON.parse(value));
-    }
-  });
-}
+var cache = require('./cache');
 
 // GitHub API Client
 var githubapi = require("github");
@@ -108,7 +68,7 @@ app.get('/:user/:repo', function(request, response) {
         } else {
           var sha = result.commit.sha;
           // Check to see if the current commit is in the cache
-          check_cache(sha, function(commit_items_callback) {
+          cache.checkCache(sha, function(commit_items_callback) {
             github.gitdata.getTree({
               user: request.params.user,
               repo: request.params.repo,
