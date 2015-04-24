@@ -15,7 +15,6 @@ var github = new githubapi({
 });
 
 var app = express();
-var server = require('http').Server(app);
 
 nunjucks.configure('templates', {
   autoescape: true,
@@ -23,6 +22,7 @@ nunjucks.configure('templates', {
   watch: true
 });
 
+app.set('port', (process.env.PORT || 3000))
 app.use(express.static('public'));
 
 function get_context(code, line) {
@@ -121,7 +121,6 @@ app.get('/:user/:repo', function(request, response) {
   });
 });
 
-var PORT = (process.env.PORT || 3000);
-server.listen(PORT, 'localhost', function() {
-  console.log("Listening on localhost:" + PORT + "...");
+app.listen(app.get('port'), function() {
+  console.log("Listening on localhost:" + app.get('port') + "...");
 });
