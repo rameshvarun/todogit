@@ -4,20 +4,16 @@ var memjs = require('memjs');
 var IN_HEROKU = process.env.MEMCACHEDCLOUD_SERVERS != null;
 
 // Setup datastore client
-var db, get, set;
+var db, client;
 if(IN_HEROKU) {
 	console.log("Using MemcachedCloud to cache data.");
-	db = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
+	client = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
 		username: process.env.MEMCACHEDCLOUD_USERNAME,
 		password: process.env.MEMCACHEDCLOUD_PASSWORD
 	});
-	get = db.get;
-	set = db.set;
 } else {
 	console.log("Using LevelDB to cache data.");
 	db = levelup('./cache');
-	get = db.get;
-	set = db.put;
 }
 
 /**
@@ -31,16 +27,22 @@ if(IN_HEROKU) {
  * @param proceed - a function(err, data), which proceeds with the data
  */
 function checkCache(key, generate_data, proceed) {
+  if(IN_HEROKU) checkMemcached(key, generate_data, proceed);
+  else checkLevelDBCache(key, generate_data, proceed);
+}
+module.exports.checkCache = checkCache;
+
+function checkLevelDBCache(key, generate_data, proceed) {
   // Check for the Key in the database
-  get(key, function(err, value) {
-    if (err || value != null) { // Key not found
+  db.get(key, function(err, value) {
+    if (err) { // Key not found
       // Call the data generation callback
       generate_data(function(err, data) {
         if (err) { // Error generating data
           proceed(err);
         } else {
           // Save generated data to DB
-          set(key, JSON.stringify(data), function(err) {
+          db.put(key, JSON.stringify(data), function(err) {
             if (err) {
               console.error("Could not persist " + key + " to cache.");
             } else {
@@ -56,4 +58,30 @@ function checkCache(key, generate_data, proceed) {
     }
   });
 }
-module.exports.checkCache = checkCache;
+
+function checkMemcached(key, generate_data, proceed) {
+  // Check for the Key in the database
+  client.get(key, function(err, value, key) {
+    if (value == null) { // Key not found
+      // Call the data generation callback
+      generate_data(function(err, data) {
+        if (err) { // Error generating data
+          proceed(err);
+        } else {
+          // Save generated data to DB
+          client.set(key, JSON.stringify(data), function(err, success) {
+            if (success) {
+              console.log("Wrote " + key + " to cache.");
+            } else {
+              console.error("Could not persist " + key + " to cache.");
+            }
+          });
+          proceed(null, data);
+        }
+      });
+    } else { // Key found, pass on the value
+      console.log("Read " + key + " from cache.");
+      proceed(null, JSON.parse(value));
+    }
+  });
+}
