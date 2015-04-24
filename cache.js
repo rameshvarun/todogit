@@ -33,7 +33,7 @@ if(IN_HEROKU) {
 function checkCache(key, generate_data, proceed) {
   // Check for the Key in the database
   get(key, function(err, value) {
-    if (err) { // Key not found
+    if (err || value != null) { // Key not found
       // Call the data generation callback
       generate_data(function(err, data) {
         if (err) { // Error generating data
