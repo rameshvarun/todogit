@@ -1,5 +1,3 @@
-global.PORT = (process.env.PORT || 80);
-
 var express = require('express');
 var nunjucks = require('nunjucks');
 var async = require('async');
@@ -123,6 +121,7 @@ app.get('/:user/:repo', function(request, response) {
   });
 });
 
-server.listen(global.PORT, 'localhost', function() {
+var PORT = (process.env.PORT || 3000);
+server.listen(PORT, 'localhost', function() {
   console.log("Listening on localhost:" + PORT + "...");
 });
