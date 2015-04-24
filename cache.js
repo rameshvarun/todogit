@@ -61,7 +61,7 @@ function checkLevelDBCache(key, generate_data, proceed) {
 
 function checkMemcached(key, generate_data, proceed) {
   // Check for the Key in the database
-  client.get(key, function(err, value, key) {
+  client.get(key, function(err, value) {
     if (value == null) { // Key not found
       // Call the data generation callback
       generate_data(function(err, data) {
@@ -69,8 +69,8 @@ function checkMemcached(key, generate_data, proceed) {
           proceed(err);
         } else {
           // Save generated data to DB
-          client.set(key, JSON.stringify(data), function(err, success) {
-            if (success) {
+          client.set(key, JSON.stringify(data), function(err, val) {
+            if (val) {
               console.log("Wrote " + key + " to cache.");
             } else {
               console.error("Could not persist " + key + " to cache.");
