@@ -44,8 +44,14 @@ function render_list(user, repo, items, request, response) {
   });
 }
 
+// TODO(rameshvarun): Add SVG Badge Route
+// TODO(rameshvarun): Allow user to see TODOs of a specific commit
+// TODO(rameshvarun): Allow user to see TODOs of a specific branch
+
 // Route that access the tip of the default branch
 app.get('/:user/:repo', function(request, response) {
+	// TODO: Better error messages
+
   // Get the info for this github repo
   github.repos.get({
     user: request.params.user,
@@ -76,6 +82,7 @@ app.get('/:user/:repo', function(request, response) {
               if (err) {
                 commit_items_callback(err);
               } else {
+              	// TODO(rameshvarun): Rearrange so that individual file shas are also cached
                 async.mapSeries(result.tree, function(file, callback) {
                   var url = "https://raw.githubusercontent.com/" +
                     request.params.user + "/" + request.params.repo +
