@@ -33,18 +33,22 @@ function get_context(code, line) {
   return lines.slice(start, end).join('\n');
 }
 
-function render_list(user, repo, items, request, response) {
-  items_by_type = _.groupBy(items, "type");
-  items_by_file = _.groupBy(items, "file");
+function render_list(user, repo, commit, items, request, response) {
   response.render('repo.html', {
     user: user,
     repo: repo,
-    items_by_type: items_by_type,
-    items_by_file: items_by_file
+    commit: commit,
+    items_by_type: _.groupBy(items, "type"),
+    items_by_file: _.groupBy(items, "file"),
+    items_by_assignee: _.groupBy(items, "assignee")
   });
 }
 
 // TODO(rameshvarun): Add SVG Badge Route
+app.get('/:user/:repo/badges/:type', function(request, response) {
+	var imgurl = "https://img.shields.io/badge/TODOs-1%20Items-green.svg";
+});
+
 // TODO(rameshvarun): Allow user to see TODOs of a specific commit
 // TODO(rameshvarun): Allow user to see TODOs of a specific branch
 
@@ -120,7 +124,7 @@ app.get('/:user/:repo', function(request, response) {
             if (err) {
               response.send(err);
             }
-            render_list(request.params.user, request.params.repo, commit_items, request, response);
+            render_list(request.params.user, request.params.repo, sha, commit_items, request, response);
           })
         }
       })

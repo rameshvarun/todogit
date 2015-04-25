@@ -48,7 +48,7 @@
 
                     <tr>
                       <td>{% if item.assignee %}Assigned to <a class="assignee-select" data-assignee="{{item.assignee}}">{{item.assignee}}</a>{% endif %}</td>
-                      <td style="text-align:right;"><a data-snippet="{{ item.file }}:{{item.line}}" href="" class="snippet-expand">{{ item.file }}:{{item.line}}</a></td>
+                      <td style="text-align:right;"><a data-snippet="{{ item.file }}:{{item.line}}" class="snippet-expand" href="https://github.com/{{user}}/{{repo}}/blob/{{commit}}/{{item.file}}#L{{item.line}}">{{ item.file }}:{{item.line}}</a></td>
                     </tr>
                   </table>
                 </li>
@@ -58,6 +58,36 @@
           {% endfor %}
         </div>
         <div class="col-md-3">
+          <h1>Assignees</h1>
+          <hr>
+          <div class="list-group">
+            {% for assignee, item_list in items_by_assignee %}
+              {% if assignee != "null" %}
+              <li data-assignee="{{assignee}}" class="assignee-select list-group-item">
+
+
+                <span class="badge pull-right">{{item_list.length}}</span>
+                {{assignee}}
+
+                <a href="http://www.github.com/{{assignee}}"><i class="fa fa-github-alt"></i> GitHub</a>
+              </li>
+              {% endif %}
+
+            {% endfor %}
+          </div>
+
+          <h1>Files</h1>
+          <hr>
+          <div class="list-group">
+            {% for file, item_list in items_by_file %}
+              {% if item_list.length %}
+                <li data-file="{{ file }}" class="file-select list-group-item">
+                  <span class="badge pull-right">{{item_list.length}}</span>
+                  {{ file }}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
@@ -80,6 +110,33 @@
         $("li, a").removeClass("active")
         console.log("Cleared active selects.");
       }
+
+       $(".file-select").click(function() {
+        if($(this).hasClass("active")) {
+          clear()
+        }
+        else {
+          clear()
+          var file = $(this).attr('data-file');
+          console.log("Selecting items in file " + file + "...")
+          console.log("[data-file='" + file + "']")
+          $("[data-file='" + file + "']").addClass("active")
+        }
+      })
+
+      $(".assignee-select").click(function(e) {
+        if(e.target != this) return true;
+        if($(this).hasClass("active")) {
+          clear()
+        }
+        else {
+          clear()
+          var assignee = $(this).attr('data-assignee');
+          console.log("Selecting items assigned to " + assignee + "...")
+          $("[data-assignee='" + assignee + "']").addClass("active")
+        }
+        return false;
+      })
 
       $(".snippet-expand").click(function() {
         var snippet = $(this).attr('data-snippet')
