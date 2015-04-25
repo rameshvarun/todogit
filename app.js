@@ -114,8 +114,8 @@ function getDefaultBranchItems(user, repo, branch_items_callback) {
           // Check to see if the current commit is in the cache
           cache.checkCache(sha, function(commit_items_callback) {
             github.gitdata.getTree({
-              user: request.params.user,
-              repo: request.params.repo,
+              user: user,
+              repo: repo,
               sha: sha,
               recursive: true
             }, function(err, result) {
@@ -137,7 +137,7 @@ function getDefaultBranchItems(user, repo, branch_items_callback) {
                   // Check to see if we have already processed this file sha
                   cache.checkCache(file.sha, function(file_items_callback) {
                     var url = "https://raw.githubusercontent.com/" +
-                      request.params.user + "/" + request.params.repo +
+                      user + "/" + repo +
                       "/" + sha + "/" + file.path;
 
                     _request(url, function(error, response, body) {
