@@ -33,7 +33,7 @@
       <div class="row">
         <div class="col-md-9">
           {% for item_type, item_list in items_by_type %}
-            <h1>{{ item_type }}</h1>
+            <h1>{{ item_type }}</h1> <img src="badges/{{ item_type.toLowerCase() }}.svg"></img>
             <hr>
             <div class="list-group">
               {% for item in item_list %}

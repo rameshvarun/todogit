@@ -16,6 +16,15 @@ var github = new githubapi({
   host: "api.github.com"
 });
 
+if (process.env.GITHUB_TOKEN) {
+  github.authenticate({
+    type: "oauth",
+    token: process.env.GITHUB_TOKEN
+  });
+  console.log("Authenticated with GitHub API...");
+}
+
+
 var app = express();
 
 nunjucks.configure('templates', {
@@ -47,42 +56,59 @@ function render_list(user, repo, commit, items, request, response) {
 }
 
 // TODO(rameshvarun): Add SVG Badge Route
-app.get('/:user/:repo/badges/:type', function(request, response) {
-	var imgurl = "https://img.shields.io/badge/TODOs-1%20Items-green.svg";
+app.get('/:user/:repo/badges/:type.svg', function(request, response) {
+  getDefaultBranchItems(request.params.user, request.params.repo, function(err, items, sha) {
+    if(err) response.send(err);
+    else {
+      var type;
+      if(request.params.type.toLowerCase() == "todos") type = "TODOs";
+      else if (request.params.type.toLowerCase() == "notes") type = "NOTEs";
+      else if (request.params.type.toLowerCase() == "fixmes") type = "FIXMEs";
+
+      var items = _.filter(items, function(item) { return item.type == type; })
+
+      var imgurl = "https://img.shields.io/badge/" + type + "-" + items.length + "%20Items-green.svg";
+      _request(imgurl, function(err, httpresponse, body) {
+        if(err) response.send(err);
+        else {
+          response.type("image/svg+xml").send(body);
+        }
+      });
+      
+    }
+  });
 });
 
 var IGNORE_LINES = _.map(fs.readFileSync('ignoretypes.txt', 'utf8').split(/\r*\n/), function(line) {
   return line.trim();
 });
-var DEFAULT_IGNORE_TYPES =  _.reject(IGNORE_LINES, function(line) {
+var DEFAULT_IGNORE_TYPES = _.reject(IGNORE_LINES, function(line) {
   return line.startsWith("#") || line.length == 0;
 })
+
 console.log("Loaded deafult ignore types...");
 
 // TODO(rameshvarun): Allow user to see TODOs of a specific commit
 // TODO(rameshvarun): Allow user to see TODOs of a specific branch
 
-// Route that access the tip of the default branch
-app.get('/:user/:repo', function(request, response) {
-	// TODO: Better error messages
-
-  // Get the info for this github repo
+function getDefaultBranchItems(user, repo, branch_items_callback) {
+ // Get the info for this github repo
   github.repos.get({
-    user: request.params.user,
-    repo: request.params.repo
+    user: user,
+    repo: repo
   }, function(err, result) {
     if (err) {
-      response.send(err);
+      branch_items_callback(err);
     } else {
       // Get information on the default branch
       var default_branch = result.default_branch;
       github.repos.getBranch({
-        user: request.params.user,
-        repo: request.params.repo,
+        user: user,
+        repo: repo,
         branch: default_branch
       }, function(err, result) {
         if (err) {
-          response.send(err);
+          branch_items_callback(null);
         } else {
           var sha = result.commit.sha;
           // Check to see if the current commit is in the cache
@@ -101,7 +127,8 @@ app.get('/:user/:repo', function(request, response) {
                     return file.path.endsWith(type);
                   })
 
-                  if(ignore) {
+
+                  if (ignore) {
                     console.log("Ignoring " + file.path + "...")
                     callback(null, []);
                     return;
@@ -140,13 +167,22 @@ app.get('/:user/:repo', function(request, response) {
             });
           }, function(err, commit_items) {
             if (err) {
-              response.send(err);
+              branch_items_callback(null);
             }
-            render_list(request.params.user, request.params.repo, sha, commit_items, request, response);
+            branch_items_callback(null, commit_items, sha);
           })
         }
       })
     }
+  });
+}
+
+// Route that access the tip of the default branch
+app.get('/:user/:repo/', function(request, response) {
+  // TODO: Better error messages
+  getDefaultBranchItems(request.params.user, request.params.repo, function(err, items, sha) {
+    if(err) response.send(err);
+    else render_list(request.params.user, request.params.repo, sha, items, request, response);
   });
 });
 

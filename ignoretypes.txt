@@ -46,3 +46,5 @@
 # IDE Files (That users typically dont edit)
 .vcxproj
 .sln
+.pbxproj
+.filters
