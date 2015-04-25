@@ -5,6 +5,8 @@ var todolist = require('todo-list');
 var _ = require('underscore');
 var _request = require('request');
 var cache = require('./cache');
+var fs = require('fs');
+require('sugar');
 
 // GitHub API Client
 var githubapi = require("github");
@@ -49,6 +51,14 @@ app.get('/:user/:repo/badges/:type', function(request, response) {
 	var imgurl = "https://img.shields.io/badge/TODOs-1%20Items-green.svg";
 });
 
+var IGNORE_LINES = _.map(fs.readFileSync('ignoretypes.txt', 'utf8').split(/\r*\n/), function(line) {
+  return line.trim();
+});
+var DEFAULT_IGNORE_TYPES =  _.reject(IGNORE_LINES, function(line) {
+  return line.startsWith("#") || line.length == 0;
+})
+console.log("Loaded deafult ignore types...");
+
 // TODO(rameshvarun): Allow user to see TODOs of a specific commit
 // TODO(rameshvarun): Allow user to see TODOs of a specific branch
 
@@ -86,35 +96,43 @@ app.get('/:user/:repo', function(request, response) {
               if (err) {
                 commit_items_callback(err);
               } else {
-              	// TODO(rameshvarun): Rearrange so that individual file shas are also cached
                 async.mapSeries(result.tree, function(file, callback) {
-                  var url = "https://raw.githubusercontent.com/" +
-                    request.params.user + "/" + request.params.repo +
-                    "/" + sha + "/" + file.path;
+                  var ignore = _.any(DEFAULT_IGNORE_TYPES, function(type) {
+                    return file.path.endsWith(type);
+                  })
 
-                  _request(url, function(error, response, body) {
-                    if (error) {
-                      callback(error);
-                    } else {
-                      callback(null, {
-                        content: body,
-                        path: file.path
-                      });
-                    }
+                  if(ignore) {
+                    console.log("Ignoring " + file.path + "...")
+                    callback(null, []);
+                    return;
+                  }
+
+                  // Check to see if we have already processed this file sha
+                  cache.checkCache(file.sha, function(file_items_callback) {
+                    var url = "https://raw.githubusercontent.com/" +
+                      request.params.user + "/" + request.params.repo +
+                      "/" + sha + "/" + file.path;
+
+                    _request(url, function(error, response, body) {
+                      if (error) {
+                        file_items_callback(error);
+                      } else {
+                        var marks = todolist.findMarks(body);
+                        _.each(marks, function(mark) {
+                          mark.file = file.path;
+                          mark.context = get_context(body, mark.line);
+                        });
+                        file_items_callback(null, marks);
+                      }
+                    });
+                  }, function(err, file_items) {
+                    callback(err, file_items);
                   });
                 }, function(err, results) {
                   if (err) {
                     commit_items_callback(err);
                   } else {
-                    var items = [];
-                    _.each(results, function(file) {
-                      var marks = todolist.findMarks(file.content);
-                      _.each(marks, function(mark) {
-                        mark.file = file.path;
-                        mark.context = get_context(file.content, mark.line);
-                        items.push(mark);
-                      });
-                    });
+                    var items = _.flatten(results);
                     commit_items_callback(null, items);
                   }
                 });

@@ -1,0 +1,48 @@
+# Images
+.jpg
+.png
+.dds
+.bmp
+.psd
+.xcf
+.ico
+
+# Videos
+.mp4
+.ogg
+
+# Binaries
+.exe
+.o
+.dll
+.apk
+
+# Audio
+.mp3
+.wav
+
+# Unity
+.meta
+.mat
+.prefab
+.unity
+.asset
+
+# Unreal Engine
+.uasset
+
+# 3D Models
+.obj
+.fbx
+.blend
+
+# Archives
+.zip
+.rar
+.7z
+.tar
+.gz
+
+# IDE Files (That users typically dont edit)
+.vcxproj
+.sln
