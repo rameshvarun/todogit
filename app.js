@@ -6,6 +6,8 @@ var _ = require('underscore');
 var _request = require('request');
 var cache = require('./cache');
 var fs = require('fs');
+var slash = require('express-slash');
+
 require('sugar');
 
 // GitHub API Client
@@ -26,6 +28,8 @@ if (process.env.GITHUB_TOKEN) {
 
 
 var app = express();
+app.enable('strict routing');
+app.use(slash());
 
 nunjucks.configure('templates', {
   autoescape: true,
